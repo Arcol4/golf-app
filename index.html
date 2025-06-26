@@ -1,640 +1,476 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Golf Scorecard">
-    <meta name="description" content="Application élégante de suivi de scores de golf pour iPhone">
-    <meta name="keywords" content="golf, scorecard, scores, iPhone, webapp">
-    <meta name="author" content="Golf App">
-    <title>Golf Scorecard Pro</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+import React, { useState } from 'react';
+import { ArrowLeft, ArrowRight, Trophy, Users, MapPin } from 'lucide-react';
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a4332, #2d5a47);
-            color: white;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+const GolfScoreApp = () => {
+  const [currentScreen, setCurrentScreen] = useState('config');
+  const [gameConfig, setGameConfig] = useState({
+    golfName: '',
+    numberOfPartners: 0,
+    partnerNames: [],
+    holes: 9
+  });
+  const [gameData, setGameData] = useState({
+    currentHole: 1,
+    holes: [],
+    players: []
+  });
 
-        .container {
-            max-width: 100vw;
-            padding: 20px 15px;
-            min-height: 100vh;
-        }
+  // Interface 1: Configuration
+  const ConfigScreen = () => {
+    const [tempConfig, setTempConfig] = useState(gameConfig);
+    const [tempPartnerNames, setTempPartnerNames] = useState(['', '', '']);
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }
+    const startGame = () => {
+      if (!tempConfig.golfName.trim()) return;
+      
+      const players = ['Arthur'];
+      const validPartnerNames = tempPartnerNames.slice(0, tempConfig.numberOfPartners).filter(name => name.trim());
+      players.push(...validPartnerNames);
+      
+      const holes = Array.from({ length: tempConfig.holes }, (_, i) => ({
+        holeNumber: i + 1,
+        par: 4,
+        scores: players.reduce((acc, player) => ({ ...acc, [player]: 0 }), {})
+      }));
 
-        .header h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
+      setGameConfig({
+        ...tempConfig,
+        partnerNames: validPartnerNames
+      });
+      
+      setGameData({
+        currentHole: 1,
+        holes,
+        players
+      });
+      
+      setCurrentScreen('game');
+    };
 
-        .card {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            flex: 1;
-            min-width: 80px;
-        }
-
-        .btn:hover, .btn:active {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
-        }
-
-        .btn.selected {
-            background: linear-gradient(135deg, #2E7D32, #1B5E20);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #FF6B35, #FF5722);
-            font-size: 18px;
-            padding: 15px 30px;
-            width: 100%;
-            margin-top: 20px;
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #757575, #424242);
-            font-size: 16px;
-            padding: 12px 25px;
-            margin: 10px 5px;
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 16px;
-            margin: 10px 0;
-        }
-
-        .input-field::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .score-summary {
-            position: sticky;
-            top: 0;
-            background: rgba(26, 67, 50, 0.95);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
-            z-index: 100;
-        }
-
-        .score-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 5px 0;
-        }
-
-        .hole-card {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 15px;
-        }
-
-        .hole-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .score-input {
-            width: 60px;
-            padding: 8px;
-            text-align: center;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .player-scores {
-            display: grid;
-            gap: 15px;
-            margin: 15px 0;
-        }
-
-        .player-score-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px 15px;
-            border-radius: 10px;
-        }
-
-        .score-indicator {
-            font-size: 18px;
-            font-weight: bold;
-            padding: 5px 10px;
-            border-radius: 20px;
-            min-width: 40px;
-            text-align: center;
-        }
-
-        .birdie { background: #4CAF50; }
-        .par { background: #9E9E9E; }
-        .bogey { background: #FF5722; }
-        .eagle { background: #2196F3; }
-        .double-bogey { background: #9C27B0; }
-
-        .final-results {
-            background: rgba(45, 90, 71, 0.9);
-            border: 2px solid #4CAF50;
-            border-radius: 15px;
-            padding: 25px;
-            margin: 20px 0;
-        }
-
-        .results-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-
-        .results-table th,
-        .results-table td {
-            padding: 12px 8px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-            font-size: 14px;
-        }
-
-        .results-table th {
-            background: rgba(255, 255, 255, 0.2);
-            font-weight: bold;
-        }
-
-        .winner {
-            background: linear-gradient(135deg, #FFD700, #FFA000);
-            color: #000;
-            font-weight: bold;
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-            margin: 20px 0;
-            font-size: 18px;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        @media (max-width: 375px) {
-            .container {
-                padding: 15px 10px;
-            }
-            
-            .btn {
-                padding: 10px 15px;
-                font-size: 14px;
-            }
-            
-            .results-table th,
-            .results-table td {
-                padding: 8px 4px;
-                font-size: 12px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Interface 1: Configuration -->
-        <div id="config-screen">
-            <div class="header">
-                <h1>🛠️ Config de la partie</h1>
-            </div>
-
-            <div class="card">
-                <h3>Nombre de partenaires (en plus de vous, Arthur)</h3>
-                <div class="button-group">
-                    <button class="btn" onclick="selectPartners(0)">0 (Solo)</button>
-                    <button class="btn" onclick="selectPartners(1)">1</button>
-                    <button class="btn" onclick="selectPartners(2)">2</button>
-                    <button class="btn" onclick="selectPartners(3)">3</button>
-                </div>
-            </div>
-
-            <div id="players-names" class="card hidden">
-                <h3>Noms des partenaires</h3>
-                <div id="name-inputs"></div>
-            </div>
-
-            <div class="card">
-                <h3>Nombre de trous</h3>
-                <div class="button-group">
-                    <button class="btn" onclick="selectHoles(9)">9 trous</button>
-                    <button class="btn" onclick="selectHoles(18)">18 trous</button>
-                </div>
-            </div>
-
-            <button class="btn btn-primary" onclick="startGame()" id="start-btn" disabled>Commencer la partie</button>
+    return (
+      <div className="min-h-screen bg-white p-4 flex flex-col">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">🛠️ Config de la partie</h1>
         </div>
 
-        <!-- Interface 2: Jeu -->
-        <div id="game-screen" class="hidden">
-            <div class="header">
-                <h1>⛳ Carte des scores</h1>
-            </div>
+        <div className="flex-1 space-y-6">
+          {/* Nom du golf */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Nom du golf *
+            </label>
+            <input
+              type="text"
+              value={tempConfig.golfName}
+              onChange={(e) => setTempConfig({...tempConfig, golfName: e.target.value})}
+              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none text-lg"
+              placeholder="Entrez le nom du golf"
+            />
+          </div>
 
-            <div class="score-summary">
-                <div id="live-scores"></div>
+          {/* Nombre de partenaires */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Nombre de partenaires (en plus de vous)
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {[0, 1, 2, 3].map(num => (
+                <button
+                  key={num}
+                  onClick={() => setTempConfig({...tempConfig, numberOfPartners: num})}
+                  className={`p-3 rounded-lg font-semibold transition-all ${
+                    tempConfig.numberOfPartners === num
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {num}
+                </button>
+              ))}
             </div>
+          </div>
 
-            <div id="holes-container"></div>
-
-            <div class="button-group">
-                <button class="btn btn-secondary" onclick="previousHole()" id="prev-btn">Retour</button>
-                <button class="btn btn-primary" onclick="validateHole()" id="validate-btn">Valider le trou</button>
+          {/* Noms des partenaires */}
+          {tempConfig.numberOfPartners > 0 && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Prénoms des partenaires
+              </label>
+              <div className="space-y-2">
+                {Array.from({ length: tempConfig.numberOfPartners }, (_, i) => (
+                  <input
+                    key={i}
+                    type="text"
+                    value={tempPartnerNames[i] || ''}
+                    onChange={(e) => {
+                      const newNames = [...tempPartnerNames];
+                      newNames[i] = e.target.value;
+                      setTempPartnerNames(newNames);
+                    }}
+                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                    placeholder={`Partenaire ${i + 1}`}
+                  />
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* Nombre de trous */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Nombre de trous
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              {[9, 18].map(holes => (
+                <button
+                  key={holes}
+                  onClick={() => setTempConfig({...tempConfig, holes})}
+                  className={`p-4 rounded-lg font-semibold text-lg transition-all ${
+                    tempConfig.holes === holes
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {holes} trous
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <!-- Interface 3: Résultats -->
-        <div id="results-screen" class="hidden">
-            <div class="header">
-                <h1 id="results-title">📅 Partie du</h1>
-            </div>
+        <button
+          onClick={startGame}
+          disabled={!tempConfig.golfName.trim()}
+          className={`w-full py-4 rounded-lg font-semibold text-lg transition-all ${
+            tempConfig.golfName.trim()
+              ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          Commencer la partie
+        </button>
+      </div>
+    );
+  };
 
-            <div class="final-results">
-                <div id="winner-announcement"></div>
-                <table class="results-table" id="final-table">
-                </table>
-            </div>
+  // Interface 2: Jeu
+  const GameScreen = () => {
+    const currentHoleData = gameData.holes[gameData.currentHole - 1];
+    
+    const updatePar = (par) => {
+      const newHoles = [...gameData.holes];
+      newHoles[gameData.currentHole - 1].par = par;
+      setGameData({...gameData, holes: newHoles});
+    };
 
-            <button class="btn btn-primary" onclick="newGame()">Nouvelle partie</button>
+    const updateScore = (player, score) => {
+      const newHoles = [...gameData.holes];
+      newHoles[gameData.currentHole - 1].scores[player] = score;
+      setGameData({...gameData, holes: newHoles});
+    };
+
+    const getScoreIcon = (score, par) => {
+      const diff = score - par;
+      if (score === 0) return '';
+      if (diff <= -2) return '🟡'; // Eagle ou mieux
+      if (diff === -1) return '🟢'; // Birdie
+      if (diff === 0) return '⚪'; // Par
+      if (diff === 1) return '🔴'; // Bogey
+      return '⚫'; // Double bogey ou pire
+    };
+
+    const getScoreText = (score, par) => {
+      if (score === 0) return '';
+      const diff = score - par;
+      if (diff === 0) return 'E';
+      return diff > 0 ? `+${diff}` : `${diff}`;
+    };
+
+    const getTotalScore = (player) => {
+      let total = 0;
+      let totalPar = 0;
+      gameData.holes.slice(0, gameData.currentHole).forEach(hole => {
+        if (hole.scores[player] > 0) {
+          total += hole.scores[player];
+          totalPar += hole.par;
+        }
+      });
+      const diff = total - totalPar;
+      if (diff === 0) return 'E';
+      return diff > 0 ? `+${diff}` : `${diff}`;
+    };
+
+    const nextHole = () => {
+      if (gameData.currentHole < gameData.holes.length) {
+        setGameData({...gameData, currentHole: gameData.currentHole + 1});
+      } else {
+        setCurrentScreen('summary');
+      }
+    };
+
+    const previousHole = () => {
+      if (gameData.currentHole > 1) {
+        setGameData({...gameData, currentHole: gameData.currentHole - 1});
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-white p-4 flex flex-col">
+        {/* En-tête fixe avec scores */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <h1 className="text-xl font-bold text-center text-gray-800 mb-3">
+            ⛳ Carte des scores
+          </h1>
+          <div className="flex justify-between text-center">
+            {gameData.players.map(player => (
+              <div key={player} className="flex-1">
+                <div className="font-semibold text-gray-800 text-sm">{player}</div>
+                <div className="text-lg font-bold text-blue-600">{getTotalScore(player)}</div>
+              </div>
+            ))}
+          </div>
         </div>
-    </div>
 
-    <script>
-        let gameState = {
-            players: ['Arthur'],
-            totalHoles: 9,
-            currentHole: 1,
-            scores: {},
-            pars: {},
-            gameStarted: false
-        };
+        {/* Trou actuel */}
+        <div className="flex-1">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">
+              Trou {gameData.currentHole}
+            </h2>
+          </div>
 
-        function selectPartners(count) {
-            document.querySelectorAll('#config-screen .btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.classList.add('selected');
-            
-            gameState.partnerCount = count;
-            gameState.players = ['Arthur'];
-            
-            const playersDiv = document.getElementById('players-names');
-            const nameInputsDiv = document.getElementById('name-inputs');
-            
-            if (count > 0) {
-                playersDiv.classList.remove('hidden');
-                nameInputsDiv.innerHTML = '';
-                for (let i = 1; i <= count; i++) {
-                    const input = document.createElement('input');
-                    input.className = 'input-field';
-                    input.placeholder = `Nom du partenaire ${i}`;
-                    input.id = `player-${i}`;
-                    nameInputsDiv.appendChild(input);
-                }
-            } else {
-                playersDiv.classList.add('hidden');
-            }
-            
-            checkStartButton();
-        }
+          {/* Sélection du par */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3 text-center">
+              Par du trou
+            </label>
+            <div className="flex justify-center gap-4">
+              {[3, 4, 5].map(par => (
+                <button
+                  key={par}
+                  onClick={() => updatePar(par)}
+                  className={`w-16 h-16 rounded-full font-bold text-xl transition-all ${
+                    currentHoleData.par === par
+                      ? 'bg-green-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {par}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        function selectHoles(holes) {
-            document.querySelectorAll('#config-screen .card:last-of-type .btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.classList.add('selected');
-            gameState.totalHoles = holes;
-            checkStartButton();
-        }
-
-        function checkStartButton() {
-            const startBtn = document.getElementById('start-btn');
-            if (gameState.partnerCount !== undefined && gameState.totalHoles) {
-                startBtn.disabled = false;
-            }
-        }
-
-        function startGame() {
-            // Récupérer les noms des partenaires
-            if (gameState.partnerCount > 0) {
-                for (let i = 1; i <= gameState.partnerCount; i++) {
-                    const name = document.getElementById(`player-${i}`).value.trim();
-                    if (name) {
-                        gameState.players.push(name);
-                    } else {
-                        gameState.players.push(`Partenaire ${i}`);
-                    }
-                }
-            }
-
-            // Initialiser les scores
-            gameState.players.forEach(player => {
-                gameState.scores[player] = [];
-            });
-
-            // Afficher l'écran de jeu
-            document.getElementById('config-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            
-            createHoleInterface();
-            updateLiveScores();
-        }
-
-        function createHoleInterface() {
-            const container = document.getElementById('holes-container');
-            container.innerHTML = '';
-
-            const holeCard = document.createElement('div');
-            holeCard.className = 'hole-card';
-            holeCard.innerHTML = `
-                <div class="hole-header">
-                    <h3>Trou ${gameState.currentHole}</h3>
+          {/* Scores des joueurs */}
+          <div className="space-y-4">
+            {gameData.players.map(player => (
+              <div key={player} className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-semibold text-gray-800">{player}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">
+                      {getScoreIcon(currentHoleData.scores[player], currentHoleData.par)}
+                    </span>
+                    <span className="font-bold text-lg">
+                      {getScoreText(currentHoleData.scores[player], currentHoleData.par)}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                    <h4>Par du trou</h4>
-                    <div class="button-group">
-                        <button class="btn" onclick="selectPar(3)">Par 3</button>
-                        <button class="btn" onclick="selectPar(4)">Par 4</button>
-                        <button class="btn" onclick="selectPar(5)">Par 5</button>
-                    </div>
+                <div className="flex gap-2 justify-center">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
+                    <button
+                      key={score}
+                      onClick={() => updateScore(player, score)}
+                      className={`w-10 h-10 rounded-full font-semibold transition-all ${
+                        currentHoleData.scores[player] === score
+                          ? 'bg-blue-500 text-white shadow-lg'
+                          : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
+                      }`}
+                    >
+                      {score}
+                    </button>
+                  ))}
                 </div>
-                <div class="player-scores" id="player-scores">
-                    ${gameState.players.map(player => `
-                        <div class="player-score-row">
-                            <span>${player}</span>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <input type="number" class="score-input" id="score-${player}" min="1" max="15" placeholder="Score">
-                                <span class="score-indicator" id="indicator-${player}"></span>
-                            </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Boutons de navigation */}
+        <div className="flex gap-4 mt-6">
+          <button
+            onClick={previousHole}
+            disabled={gameData.currentHole === 1}
+            className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+              gameData.currentHole === 1
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-500 text-white hover:bg-gray-600'
+            }`}
+          >
+            <ArrowLeft size={20} />
+            Retour
+          </button>
+          <button
+            onClick={nextHole}
+            className="flex-1 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 flex items-center justify-center gap-2"
+          >
+            {gameData.currentHole === gameData.holes.length ? 'Terminer' : 'Trou suivant'}
+            <ArrowRight size={20} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Interface 3: Résumé
+  const SummaryScreen = () => {
+    const today = new Date().toLocaleDateString('fr-FR');
+    
+    const getFinalScore = (player) => {
+      let total = 0;
+      let totalPar = 0;
+      gameData.holes.forEach(hole => {
+        total += hole.scores[player];
+        totalPar += hole.par;
+      });
+      return total - totalPar;
+    };
+
+    const getWinner = () => {
+      const scores = gameData.players.map(player => ({
+        player,
+        score: getFinalScore(player)
+      }));
+      
+      const minScore = Math.min(...scores.map(s => s.score));
+      const winners = scores.filter(s => s.score === minScore);
+      
+      if (winners.length > 1) {
+        return { type: 'tie', players: winners.map(w => w.player) };
+      } else {
+        return { type: 'winner', player: winners[0].player, score: minScore };
+      }
+    };
+
+    const winner = getWinner();
+
+    return (
+      <div className="min-h-screen bg-white p-4">
+        <div className="text-center mb-6">
+          <h1 className="text-xl font-bold text-gray-800">
+            📅 Partie du {today} au Golf {gameConfig.golfName}
+          </h1>
+        </div>
+
+        <div className="border-4 border-green-800 rounded-lg p-6 bg-green-50">
+          {/* Résultat final */}
+          <div className="text-center mb-6">
+            {winner.type === 'tie' ? (
+              <div>
+                <Trophy className="mx-auto text-yellow-600 mb-2" size={32} />
+                <h2 className="text-xl font-bold text-green-800">Égalité !</h2>
+                <p className="text-green-700">
+                  {winner.players.join(' et ')} se partagent la victoire
+                </p>
+              </div>
+            ) : (
+              <div>
+                <Trophy className="mx-auto text-yellow-600 mb-2" size={32} />
+                <h2 className="text-xl font-bold text-green-800">
+                  Gagnant : {winner.player}
+                </h2>
+                <p className="text-green-700">
+                  Score final : {winner.score === 0 ? 'E' : winner.score > 0 ? `+${winner.score}` : `${winner.score}`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Tableau des scores */}
+          <div className="bg-white rounded-lg p-4 shadow-inner">
+            <h3 className="font-bold text-green-800 mb-4 text-center">Tableau final des scores</h3>
+            
+            {/* En-têtes */}
+            <div className="grid grid-cols-4 gap-1 mb-2 text-xs font-semibold text-center">
+              <div className="text-green-800">Trou</div>
+              {gameData.players.slice(0, 3).map(player => (
+                <div key={player} className="text-green-800 truncate">{player}</div>
+              ))}
+            </div>
+
+            {/* Scores par trou */}
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {gameData.holes.map(hole => (
+                <div key={hole.holeNumber}>
+                  <div className="grid grid-cols-4 gap-1 text-xs text-center py-1">
+                    <div className="font-semibold text-green-800">{hole.holeNumber}</div>
+                    {gameData.players.slice(0, 3).map(player => {
+                      const score = hole.scores[player];
+                      const diff = score - hole.par;
+                      return (
+                        <div key={player} className="text-green-700">
+                          {diff === 0 ? 'E' : diff > 0 ? `+${diff}` : `${diff}`}
                         </div>
-                    `).join('')}
+                      );
+                    })}
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-xs text-center text-gray-500 mb-1">
+                    <div>Par {hole.par}</div>
+                    {gameData.players.slice(0, 3).map(player => (
+                      <div key={player}>{hole.scores[player]}</div>
+                    ))}
+                  </div>
                 </div>
-            `;
-            container.appendChild(holeCard);
+              ))}
+            </div>
 
-            // Ajouter les événements pour les scores
-            gameState.players.forEach(player => {
-                const input = document.getElementById(`score-${player}`);
-                input.addEventListener('input', updateScoreIndicators);
+            {/* Totaux finaux */}
+            <div className="border-t-2 border-green-200 mt-4 pt-2">
+              <div className="grid grid-cols-4 gap-1 text-sm font-bold text-center">
+                <div className="text-green-800">Total</div>
+                {gameData.players.slice(0, 3).map(player => {
+                  const finalScore = getFinalScore(player);
+                  return (
+                    <div key={player} className="text-green-800">
+                      {finalScore === 0 ? 'E' : finalScore > 0 ? `+${finalScore}` : `${finalScore}`}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            setCurrentScreen('config');
+            setGameConfig({
+              golfName: '',
+              numberOfPartners: 0,
+              partnerNames: [],
+              holes: 9
             });
-        }
-
-        function selectPar(par) {
-            document.querySelectorAll('.hole-card .btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.classList.add('selected');
-            gameState.pars[gameState.currentHole] = par;
-            updateScoreIndicators();
-        }
-
-        function updateScoreIndicators() {
-            const par = gameState.pars[gameState.currentHole];
-            if (!par) return;
-
-            gameState.players.forEach(player => {
-                const input = document.getElementById(`score-${player}`);
-                const indicator = document.getElementById(`indicator-${player}`);
-                const score = parseInt(input.value);
-
-                if (score && score > 0) {
-                    const diff = score - par;
-                    indicator.className = 'score-indicator';
-                    
-                    if (diff <= -2) {
-                        indicator.classList.add('eagle');
-                        indicator.textContent = '🦅';
-                    } else if (diff === -1) {
-                        indicator.classList.add('birdie');
-                        indicator.textContent = '🟢';
-                    } else if (diff === 0) {
-                        indicator.classList.add('par');
-                        indicator.textContent = '⚪';
-                    } else if (diff === 1) {
-                        indicator.classList.add('bogey');
-                        indicator.textContent = '🔴';
-                    } else {
-                        indicator.classList.add('double-bogey');
-                        indicator.textContent = '🟣';
-                    }
-                } else {
-                    indicator.textContent = '';
-                    indicator.className = 'score-indicator';
-                }
+            setGameData({
+              currentHole: 1,
+              holes: [],
+              players: []
             });
-        }
+          }}
+          className="w-full mt-6 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
+        >
+          Nouvelle partie
+        </button>
+      </div>
+    );
+  };
 
-        function validateHole() {
-            const par = gameState.pars[gameState.currentHole];
-            if (!par) {
-                alert('Veuillez sélectionner le par du trou');
-                return;
-            }
+  return (
+    <div className="max-w-sm mx-auto">
+      {currentScreen === 'config' && <ConfigScreen />}
+      {currentScreen === 'game' && <GameScreen />}
+      {currentScreen === 'summary' && <SummaryScreen />}
+    </div>
+  );
+};
 
-            let allScoresEntered = true;
-            gameState.players.forEach(player => {
-                const input = document.getElementById(`score-${player}`);
-                const score = parseInt(input.value);
-                if (!score || score <= 0) {
-                    allScoresEntered = false;
-                } else {
-                    gameState.scores[player].push(score);
-                }
-            });
-
-            if (!allScoresEntered) {
-                alert('Veuillez entrer tous les scores');
-                return;
-            }
-
-            if (gameState.currentHole >= gameState.totalHoles) {
-                showResults();
-            } else {
-                gameState.currentHole++;
-                createHoleInterface();
-                updateLiveScores();
-            }
-
-            document.getElementById('prev-btn').disabled = false;
-        }
-
-        function previousHole() {
-            if (gameState.currentHole > 1) {
-                gameState.currentHole--;
-                // Supprimer les scores du trou suivant
-                gameState.players.forEach(player => {
-                    gameState.scores[player].pop();
-                });
-                createHoleInterface();
-                updateLiveScores();
-            }
-        }
-
-        function updateLiveScores() {
-            const container = document.getElementById('live-scores');
-            container.innerHTML = '<h4>Scores en temps réel</h4>';
-
-            gameState.players.forEach(player => {
-                const playerScores = gameState.scores[player] || [];
-                let totalScore = playerScores.reduce((sum, score) => sum + score, 0);
-                let totalPar = 0;
-                
-                for (let i = 1; i < gameState.currentHole; i++) {
-                    if (gameState.pars[i]) {
-                        totalPar += gameState.pars[i];
-                    }
-                }
-
-                const diff = totalScore - totalPar;
-                const diffText = diff > 0 ? `+${diff}` : diff === 0 ? '±0' : `${diff}`;
-
-                const scoreRow = document.createElement('div');
-                scoreRow.className = 'score-row';
-                scoreRow.innerHTML = `
-                    <span>${player}</span>
-                    <strong>${diffText}</strong>
-                `;
-                container.appendChild(scoreRow);
-            });
-        }
-
-        function showResults() {
-            document.getElementById('game-screen').classList.add('hidden');
-            document.getElementById('results-screen').classList.remove('hidden');
-
-            // Date dynamique
-            const today = new Date();
-            const dateStr = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear().toString().substr(2)}`;
-            document.getElementById('results-title').textContent = `📅 Partie du ${dateStr}`;
-
-            // Calculer les totaux
-            const playerTotals = {};
-            let totalPar = Object.values(gameState.pars).reduce((sum, par) => sum + par, 0);
-
-            gameState.players.forEach(player => {
-                const total = gameState.scores[player].reduce((sum, score) => sum + score, 0);
-                playerTotals[player] = {
-                    total: total,
-                    diff: total - totalPar
-                };
-            });
-
-            // Déterminer le gagnant
-            const minDiff = Math.min(...Object.values(playerTotals).map(p => p.diff));
-            const winners = gameState.players.filter(player => playerTotals[player].diff === minDiff);
-
-            // Afficher le gagnant
-            const winnerDiv = document.getElementById('winner-announcement');
-            if (winners.length === 1) {
-                winnerDiv.innerHTML = `<div class="winner">🏆 Gagnant : ${winners[0]}</div>`;
-            } else {
-                winnerDiv.innerHTML = `<div class="winner">🤝 Égalité : ${winners.join(', ')}</div>`;
-            }
-
-            // Créer le tableau final
-            createFinalTable(playerTotals, totalPar);
-        }
-
-        function createFinalTable(playerTotals, totalPar) {
-            const table = document.getElementById('final-table');
-            table.innerHTML = '';
-
-            // En-tête
-            const headerRow = document.createElement('tr');
-            headerRow.innerHTML = '<th>Trou</th>' + gameState.players.map(player => `<th>${player}</th>`).join('');
-            table.appendChild(headerRow);
-
-            // Lignes des trous
-            for (let hole = 1; hole <= gameState.totalHoles; hole++) {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td><strong>${hole}</strong></td>` +
-                    gameState.players.map(player => `<td>${gameState.scores[player][hole - 1] || '-'}</td>`).join('');
-                table.appendChild(row);
-            }
-
-            // Ligne des totaux
-            const totalRow = document.createElement('tr');
-            totalRow.innerHTML = '<td><strong>Total</strong></td>' +
-                gameState.players.map(player => {
-                    const diff = playerTotals[player].diff;
-                    const diffText = diff > 0 ? `+${diff}` : diff === 0 ? '±0' : `${diff}`;
-                    return `<td><strong>${playerTotals[player].total} (${diffText})</strong></td>`;
-                }).join('');
-            table.appendChild(totalRow);
-        }
-
-        function newGame() {
-            gameState = {
-                players: ['Arthur'],
-                totalHoles: 9,
-                currentHole: 1,
-                scores: {},
-                pars: {},
-                gameStarted: false
-            };
-
-            document.getElementById('results-screen').classList.add('hidden');
-            document.getElementById('config-screen').classList.remove('hidden');
-            
-            // Reset de l'interface de config
-            document.querySelectorAll('.btn.selected').forEach(btn => btn.classList.remove('selected'));
-            document.getElementById('players-names').classList.add('hidden');
-            document.getElementById('start-btn').disabled = true;
-        }
-    </script>
-</body>
-</html>
+export default GolfScoreApp;
