@@ -1,476 +1,766 @@
-import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Trophy, Users, MapPin } from 'lucide-react';
-
-const GolfScoreApp = () => {
-  const [currentScreen, setCurrentScreen] = useState('config');
-  const [gameConfig, setGameConfig] = useState({
-    golfName: '',
-    numberOfPartners: 0,
-    partnerNames: [],
-    holes: 9
-  });
-  const [gameData, setGameData] = useState({
-    currentHole: 1,
-    holes: [],
-    players: []
-  });
-
-  // Interface 1: Configuration
-  const ConfigScreen = () => {
-    const [tempConfig, setTempConfig] = useState(gameConfig);
-    const [tempPartnerNames, setTempPartnerNames] = useState(['', '', '']);
-
-    const startGame = () => {
-      if (!tempConfig.golfName.trim()) return;
-      
-      const players = ['Arthur'];
-      const validPartnerNames = tempPartnerNames.slice(0, tempConfig.numberOfPartners).filter(name => name.trim());
-      players.push(...validPartnerNames);
-      
-      const holes = Array.from({ length: tempConfig.holes }, (_, i) => ({
-        holeNumber: i + 1,
-        par: 4,
-        scores: players.reduce((acc, player) => ({ ...acc, [player]: 0 }), {})
-      }));
-
-      setGameConfig({
-        ...tempConfig,
-        partnerNames: validPartnerNames
-      });
-      
-      setGameData({
-        currentHole: 1,
-        holes,
-        players
-      });
-      
-      setCurrentScreen('game');
-    };
-
-    return (
-      <div className="min-h-screen bg-white p-4 flex flex-col">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">🛠️ Config de la partie</h1>
-        </div>
-
-        <div className="flex-1 space-y-6">
-          {/* Nom du golf */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Nom du golf *
-            </label>
-            <input
-              type="text"
-              value={tempConfig.golfName}
-              onChange={(e) => setTempConfig({...tempConfig, golfName: e.target.value})}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none text-lg"
-              placeholder="Entrez le nom du golf"
-            />
-          </div>
-
-          {/* Nombre de partenaires */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Nombre de partenaires (en plus de vous)
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {[0, 1, 2, 3].map(num => (
-                <button
-                  key={num}
-                  onClick={() => setTempConfig({...tempConfig, numberOfPartners: num})}
-                  className={`p-3 rounded-lg font-semibold transition-all ${
-                    tempConfig.numberOfPartners === num
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Noms des partenaires */}
-          {tempConfig.numberOfPartners > 0 && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Prénoms des partenaires
-              </label>
-              <div className="space-y-2">
-                {Array.from({ length: tempConfig.numberOfPartners }, (_, i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    value={tempPartnerNames[i] || ''}
-                    onChange={(e) => {
-                      const newNames = [...tempPartnerNames];
-                      newNames[i] = e.target.value;
-                      setTempPartnerNames(newNames);
-                    }}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                    placeholder={`Partenaire ${i + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Nombre de trous */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Nombre de trous
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              {[9, 18].map(holes => (
-                <button
-                  key={holes}
-                  onClick={() => setTempConfig({...tempConfig, holes})}
-                  className={`p-4 rounded-lg font-semibold text-lg transition-all ${
-                    tempConfig.holes === holes
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {holes} trous
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={startGame}
-          disabled={!tempConfig.golfName.trim()}
-          className={`w-full py-4 rounded-lg font-semibold text-lg transition-all ${
-            tempConfig.golfName.trim()
-              ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Commencer la partie
-        </button>
-      </div>
-    );
-  };
-
-  // Interface 2: Jeu
-  const GameScreen = () => {
-    const currentHoleData = gameData.holes[gameData.currentHole - 1];
-    
-    const updatePar = (par) => {
-      const newHoles = [...gameData.holes];
-      newHoles[gameData.currentHole - 1].par = par;
-      setGameData({...gameData, holes: newHoles});
-    };
-
-    const updateScore = (player, score) => {
-      const newHoles = [...gameData.holes];
-      newHoles[gameData.currentHole - 1].scores[player] = score;
-      setGameData({...gameData, holes: newHoles});
-    };
-
-    const getScoreIcon = (score, par) => {
-      const diff = score - par;
-      if (score === 0) return '';
-      if (diff <= -2) return '🟡'; // Eagle ou mieux
-      if (diff === -1) return '🟢'; // Birdie
-      if (diff === 0) return '⚪'; // Par
-      if (diff === 1) return '🔴'; // Bogey
-      return '⚫'; // Double bogey ou pire
-    };
-
-    const getScoreText = (score, par) => {
-      if (score === 0) return '';
-      const diff = score - par;
-      if (diff === 0) return 'E';
-      return diff > 0 ? `+${diff}` : `${diff}`;
-    };
-
-    const getTotalScore = (player) => {
-      let total = 0;
-      let totalPar = 0;
-      gameData.holes.slice(0, gameData.currentHole).forEach(hole => {
-        if (hole.scores[player] > 0) {
-          total += hole.scores[player];
-          totalPar += hole.par;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Golf Score">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='256' fill='%23065f46'/%3E%3Cpath d='M256 100c-86.066 0-156 69.934-156 156s69.934 156 156 156 156-69.934 156-156-69.934-156-156-156zm0 280c-68.374 0-124-55.626-124-124s55.626-124 124-124 124 55.626 124 124-55.626 124-124 124z' fill='white'/%3E%3Ccircle cx='256' cy='256' r='20' fill='white'/%3E%3C/svg%3E">
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiR29sZiBTY29yZSBUcmFja2VyIiwic2hvcnRfbmFtZSI6IkdvbGYgU2NvcmUiLCJzdGFydF91cmwiOiIuLyIsInRoZW1lX2NvbG9yIjoiIzA2NWY0NiIsImJhY2tncm91bmRfY29sb3IiOiIjZmZmZmZmIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJyUzRSUzQ2NpcmNsZSBjeD0nMjU2JyBjeT0nMjU2JyByPScyNTYnIGZpbGw9JyUyMzA2NWY0NicvJTNFJTNDcGF0aCBkPSdNMjU2IDEwMGMtODYuMDY2IDAtMTU2IDY5LjkzNC0xNTYgMTU2czY5LjkzNCAxNTYgMTU2IDE1NiAxNTYtNjkuOTM0IDE1Ni0xNTZzLTY5LjkzNC0xNTYtMTU2LTE1NnptMCAyODBjLTY4LjM3NCAwLTEyNC01NS42MjYtMTI0LTEyNHM1NS42MjYtMTI0IDEyNC0xMjQgMTI0IDU1LjYyNiAxMjQgMTI0LTU1LjYyNiAxMjQtMTI0IDEyNHonIGZpbGw9J3doaXRlJy8lM0UlM0NjaXJjbGUgY3g9JzI1NicgY3k9JzI1Nicgcj0nMjAnIGZpbGw9J3doaXRlJy8lM0UlM0Mvc3ZnJTNF","sizes":"512x512","type":"image/svg+xml"}]}">
+    <title>Golf Score Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-      });
-      const diff = total - totalPar;
-      if (diff === 0) return 'E';
-      return diff > 0 ? `+${diff}` : `${diff}`;
-    };
 
-    const nextHole = () => {
-      if (gameData.currentHole < gameData.holes.length) {
-        setGameData({...gameData, currentHole: gameData.currentHole + 1});
-      } else {
-        setCurrentScreen('summary');
-      }
-    };
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #ffffff;
+            color: #1f2937;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
 
-    const previousHole = () => {
-      if (gameData.currentHole > 1) {
-        setGameData({...gameData, currentHole: gameData.currentHole - 1});
-      }
-    };
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            max-width: 100vw;
+        }
 
-    return (
-      <div className="min-h-screen bg-white p-4 flex flex-col">
-        {/* En-tête fixe avec scores */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
-          <h1 className="text-xl font-bold text-center text-gray-800 mb-3">
-            ⛳ Carte des scores
-          </h1>
-          <div className="flex justify-between text-center">
-            {gameData.players.map(player => (
-              <div key={player} className="flex-1">
-                <div className="font-semibold text-gray-800 text-sm">{player}</div>
-                <div className="text-lg font-bold text-blue-600">{getTotalScore(player)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        .screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            justify-content: space-between;
+        }
 
-        {/* Trou actuel */}
-        <div className="flex-1">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Trou {gameData.currentHole}
-            </h2>
-          </div>
+        .screen.active {
+            display: flex;
+        }
 
-          {/* Sélection du par */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-3 text-center">
-              Par du trou
-            </label>
-            <div className="flex justify-center gap-4">
-              {[3, 4, 5].map(par => (
-                <button
-                  key={par}
-                  onClick={() => updatePar(par)}
-                  className={`w-16 h-16 rounded-full font-bold text-xl transition-all ${
-                    currentHoleData.par === par
-                      ? 'bg-green-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {par}
-                </button>
-              ))}
-            </div>
-          </div>
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
 
-          {/* Scores des joueurs */}
-          <div className="space-y-4">
-            {gameData.players.map(player => (
-              <div key={player} className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-semibold text-gray-800">{player}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">
-                      {getScoreIcon(currentHoleData.scores[player], currentHoleData.par)}
-                    </span>
-                    <span className="font-bold text-lg">
-                      {getScoreText(currentHoleData.scores[player], currentHoleData.par)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-2 justify-center">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
-                    <button
-                      key={score}
-                      onClick={() => updateScore(player, score)}
-                      className={`w-10 h-10 rounded-full font-semibold transition-all ${
-                        currentHoleData.scores[player] === score
-                          ? 'bg-blue-500 text-white shadow-lg'
-                          : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
-                      }`}
-                    >
-                      {score}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #065f46;
+        }
 
-        {/* Boutons de navigation */}
-        <div className="flex gap-4 mt-6">
-          <button
-            onClick={previousHole}
-            disabled={gameData.currentHole === 1}
-            className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-              gameData.currentHole === 1
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-500 text-white hover:bg-gray-600'
-            }`}
-          >
-            <ArrowLeft size={20} />
-            Retour
-          </button>
-          <button
-            onClick={nextHole}
-            className="flex-1 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 flex items-center justify-center gap-2"
-          >
-            {gameData.currentHole === gameData.holes.length ? 'Terminer' : 'Trou suivant'}
-            <ArrowRight size={20} />
-          </button>
-        </div>
-      </div>
-    );
-  };
+        .form-group {
+            margin-bottom: 25px;
+        }
 
-  // Interface 3: Résumé
-  const SummaryScreen = () => {
-    const today = new Date().toLocaleDateString('fr-FR');
-    
-    const getFinalScore = (player) => {
-      let total = 0;
-      let totalPar = 0;
-      gameData.holes.forEach(hole => {
-        total += hole.scores[player];
-        totalPar += hole.par;
-      });
-      return total - totalPar;
-    };
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
 
-    const getWinner = () => {
-      const scores = gameData.players.map(player => ({
-        player,
-        score: getFinalScore(player)
-      }));
-      
-      const minScore = Math.min(...scores.map(s => s.score));
-      const winners = scores.filter(s => s.score === minScore);
-      
-      if (winners.length > 1) {
-        return { type: 'tie', players: winners.map(w => w.player) };
-      } else {
-        return { type: 'winner', player: winners[0].player, score: minScore };
-      }
-    };
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            background-color: #ffffff;
+            transition: border-color 0.2s;
+        }
 
-    const winner = getWinner();
+        .form-input:focus {
+            outline: none;
+            border-color: #065f46;
+        }
 
-    return (
-      <div className="min-h-screen bg-white p-4">
-        <div className="text-center mb-6">
-          <h1 className="text-xl font-bold text-gray-800">
-            📅 Partie du {today} au Golf {gameConfig.golfName}
-          </h1>
-        </div>
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
 
-        <div className="border-4 border-green-800 rounded-lg p-6 bg-green-50">
-          {/* Résultat final */}
-          <div className="text-center mb-6">
-            {winner.type === 'tie' ? (
-              <div>
-                <Trophy className="mx-auto text-yellow-600 mb-2" size={32} />
-                <h2 className="text-xl font-bold text-green-800">Égalité !</h2>
-                <p className="text-green-700">
-                  {winner.players.join(' et ')} se partagent la victoire
-                </p>
-              </div>
-            ) : (
-              <div>
-                <Trophy className="mx-auto text-yellow-600 mb-2" size={32} />
-                <h2 className="text-xl font-bold text-green-800">
-                  Gagnant : {winner.player}
-                </h2>
-                <p className="text-green-700">
-                  Score final : {winner.score === 0 ? 'E' : winner.score > 0 ? `+${winner.score}` : `${winner.score}`}
-                </p>
-              </div>
-            )}
-          </div>
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 48px;
+        }
 
-          {/* Tableau des scores */}
-          <div className="bg-white rounded-lg p-4 shadow-inner">
-            <h3 className="font-bold text-green-800 mb-4 text-center">Tableau final des scores</h3>
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-secondary {
+            background-color: #f3f4f6;
+            color: #374151;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
+        }
+
+        .btn-secondary.active {
+            background-color: #065f46;
+            color: white;
+            border-color: #065f46;
+        }
+
+        .btn-gray {
+            background-color: #6b7280;
+            color: white;
+        }
+
+        .btn-gray:hover {
+            background-color: #4b5563;
+        }
+
+        .navigation {
+            display: flex;
+            gap: 15px;
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        .score-header {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            font-weight: 600;
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-item .name {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .score-item .score {
+            font-size: 18px;
+            color: #065f46;
+        }
+
+        .hole-info {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .hole-info h2 {
+            font-size: 22px;
+            color: #065f46;
+            margin-bottom: 10px;
+        }
+
+        .par-selection {
+            margin-bottom: 25px;
+        }
+
+        .score-inputs {
+            margin-bottom: 25px;
+        }
+
+        .player-score {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .player-name {
+            font-weight: 500;
+            min-width: 60px;
+        }
+
+        .score-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .score-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            background-color: #e5e7eb;
+            color: #374151;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .score-display {
+            min-width: 40px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .result-emoji {
+            font-size: 20px;
+            margin-left: 10px;
+        }
+
+        .final-results {
+            background-color: #065f46;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .final-results h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .final-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .final-table th,
+        .final-table td {
+            padding: 8px 4px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 14px;
+        }
+
+        .final-table th {
+            font-weight: 600;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .winner-text {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .form-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+            margin-right: -10px;
+        }
+
+        .par-info {
+            font-size: 14px;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 380px) {
+            .container {
+                padding: 15px;
+            }
             
-            {/* En-têtes */}
-            <div className="grid grid-cols-4 gap-1 mb-2 text-xs font-semibold text-center">
-              <div className="text-green-800">Trou</div>
-              {gameData.players.slice(0, 3).map(player => (
-                <div key={player} className="text-green-800 truncate">{player}</div>
-              ))}
+            .btn {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+            
+            .final-table th,
+            .final-table td {
+                padding: 6px 2px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Interface 1: Configuration -->
+        <div class="screen active" id="config-screen">
+            <div class="header">
+                <h1>🛠️ Config de la partie</h1>
             </div>
-
-            {/* Scores par trou */}
-            <div className="space-y-1 max-h-64 overflow-y-auto">
-              {gameData.holes.map(hole => (
-                <div key={hole.holeNumber}>
-                  <div className="grid grid-cols-4 gap-1 text-xs text-center py-1">
-                    <div className="font-semibold text-green-800">{hole.holeNumber}</div>
-                    {gameData.players.slice(0, 3).map(player => {
-                      const score = hole.scores[player];
-                      const diff = score - hole.par;
-                      return (
-                        <div key={player} className="text-green-700">
-                          {diff === 0 ? 'E' : diff > 0 ? `+${diff}` : `${diff}`}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="grid grid-cols-4 gap-1 text-xs text-center text-gray-500 mb-1">
-                    <div>Par {hole.par}</div>
-                    {gameData.players.slice(0, 3).map(player => (
-                      <div key={player}>{hole.scores[player]}</div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Totaux finaux */}
-            <div className="border-t-2 border-green-200 mt-4 pt-2">
-              <div className="grid grid-cols-4 gap-1 text-sm font-bold text-center">
-                <div className="text-green-800">Total</div>
-                {gameData.players.slice(0, 3).map(player => {
-                  const finalScore = getFinalScore(player);
-                  return (
-                    <div key={player} className="text-green-800">
-                      {finalScore === 0 ? 'E' : finalScore > 0 ? `+${finalScore}` : `${finalScore}`}
+            
+            <div class="content">
+                <div class="form-content">
+                    <div class="form-group">
+                        <label for="golf-name">Nom du golf</label>
+                        <input type="text" id="golf-name" class="form-input" placeholder="Saisissez le nom du golf">
                     </div>
-                  );
-                })}
-              </div>
+
+                    <div class="form-group">
+                        <label>Nombre de joueurs en plus de moi</label>
+                        <div class="button-group">
+                            <button class="btn btn-secondary" data-players="0">0</button>
+                            <button class="btn btn-secondary" data-players="1">1</button>
+                            <button class="btn btn-secondary" data-players="2">2</button>
+                            <button class="btn btn-secondary" data-players="3">3</button>
+                        </div>
+                    </div>
+
+                    <div id="player-names" style="display: none;">
+                        <div class="form-group">
+                            <label>Prénoms des joueurs</label>
+                            <div id="name-inputs"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nombre de trous</label>
+                        <div class="button-group">
+                            <button class="btn btn-secondary" data-holes="9">9 trous</button>
+                            <button class="btn btn-secondary" data-holes="18">18 trous</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
+
+            <div class="navigation">
+                <button class="btn btn-primary" id="start-game" style="width: 100%;">Commencer la partie</button>
+            </div>
         </div>
 
-        <button
-          onClick={() => {
-            setCurrentScreen('config');
-            setGameConfig({
-              golfName: '',
-              numberOfPartners: 0,
-              partnerNames: [],
-              holes: 9
-            });
-            setGameData({
-              currentHole: 1,
-              holes: [],
-              players: []
-            });
-          }}
-          className="w-full mt-6 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
-        >
-          Nouvelle partie
-        </button>
-      </div>
-    );
-  };
+        <!-- Interface 2: Carte des scores -->
+        <div class="screen" id="game-screen">
+            <div class="header">
+                <h1>⛳ Carte des scores</h1>
+            </div>
 
-  return (
-    <div className="max-w-sm mx-auto">
-      {currentScreen === 'config' && <ConfigScreen />}
-      {currentScreen === 'game' && <GameScreen />}
-      {currentScreen === 'summary' && <SummaryScreen />}
+            <div id="score-header" class="score-header"></div>
+
+            <div class="content">
+                <div class="hole-info">
+                    <h2 id="hole-title">Trou 1</h2>
+                    <div class="par-selection">
+                        <label>Par du trou</label>
+                        <div class="button-group">
+                            <button class="btn btn-secondary" data-par="3">Par 3</button>
+                            <button class="btn btn-secondary" data-par="4">Par 4</button>
+                            <button class="btn btn-secondary" data-par="5">Par 5</button>
+                        </div>
+                        <div class="par-info" id="par-info">Sélectionnez le par du trou</div>
+                    </div>
+                </div>
+
+                <div class="score-inputs" id="score-inputs"></div>
+            </div>
+
+            <div class="navigation">
+                <button class="btn btn-gray" id="back-btn">Retour</button>
+                <button class="btn btn-primary" id="next-hole-btn">Trou suivant</button>
+            </div>
+        </div>
+
+        <!-- Interface 3: Résultats finaux -->
+        <div class="screen" id="results-screen">
+            <div class="header">
+                <h1 id="results-title">📅 Partie du 26/06/25</h1>
+            </div>
+
+            <div class="content">
+                <div class="final-results">
+                    <h2>Résultats de la partie</h2>
+                    <table class="final-table" id="final-table"></table>
+                    <div class="winner-text" id="winner-text"></div>
+                </div>
+            </div>
+
+            <div class="navigation">
+                <button class="btn btn-primary" id="new-game-btn" style="width: 100%;">Nouvelle partie</button>
+            </div>
+        </div>
     </div>
-  );
-};
 
-export default GolfScoreApp;
+    <script>
+        // Variables globales
+        let gameState = {
+            golfName: '',
+            players: ['Arthur'],
+            totalHoles: 9,
+            currentHole: 1,
+            holes: [],
+            scores: {}
+        };
+
+        // Elements DOM
+        const screens = {
+            config: document.getElementById('config-screen'),
+            game: document.getElementById('game-screen'),
+            results: document.getElementById('results-screen')
+        };
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            setupConfigScreen();
+            setupGameScreen();
+            setupResultsScreen();
+        }
+
+        function setupConfigScreen() {
+            // Sélection du nombre de joueurs
+            document.querySelectorAll('[data-players]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('[data-players]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const playerCount = parseInt(this.dataset.players);
+                    const playerNamesDiv = document.getElementById('player-names');
+                    const nameInputsDiv = document.getElementById('name-inputs');
+                    
+                    if (playerCount > 0) {
+                        playerNamesDiv.style.display = 'block';
+                        nameInputsDiv.innerHTML = '';
+                        
+                        for (let i = 1; i <= playerCount; i++) {
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.className = 'form-input';
+                            input.placeholder = `Prénom joueur ${i}`;
+                            input.style.marginBottom = '10px';
+                            input.id = `player-${i}`;
+                            nameInputsDiv.appendChild(input);
+                        }
+                    } else {
+                        playerNamesDiv.style.display = 'none';
+                    }
+                });
+            });
+
+            // Sélection du nombre de trous
+            document.querySelectorAll('[data-holes]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('[data-holes]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Démarrage de la partie
+            document.getElementById('start-game').addEventListener('click', startGame);
+        }
+
+        function startGame() {
+            const golfName = document.getElementById('golf-name').value.trim();
+            const selectedPlayers = document.querySelector('[data-players].active');
+            const selectedHoles = document.querySelector('[data-holes].active');
+
+            if (!golfName) {
+                alert('Veuillez saisir le nom du golf');
+                return;
+            }
+
+            if (!selectedPlayers || !selectedHoles) {
+                alert('Veuillez sélectionner le nombre de joueurs et de trous');
+                return;
+            }
+
+            gameState.golfName = golfName;
+            gameState.totalHoles = parseInt(selectedHoles.dataset.holes);
+            gameState.players = ['Arthur'];
+
+            const playerCount = parseInt(selectedPlayers.dataset.players);
+            for (let i = 1; i <= playerCount; i++) {
+                const playerName = document.getElementById(`player-${i}`).value.trim();
+                if (!playerName) {
+                    alert(`Veuillez saisir le prénom du joueur ${i}`);
+                    return;
+                }
+                gameState.players.push(playerName);
+            }
+
+            // Initialiser les scores
+            gameState.scores = {};
+            gameState.players.forEach(player => {
+                gameState.scores[player] = [];
+            });
+
+            // Initialiser les trous
+            gameState.holes = Array(gameState.totalHoles).fill(0).map(() => ({ par: 4 }));
+            gameState.currentHole = 1;
+
+            showScreen('game');
+            updateGameScreen();
+        }
+
+        function setupGameScreen() {
+            // Sélection du par
+            document.querySelectorAll('[data-par]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('[data-par]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const par = parseInt(this.dataset.par);
+                    gameState.holes[gameState.currentHole - 1].par = par;
+                    document.getElementById('par-info').textContent = `Par ${par} sélectionné`;
+                });
+            });
+
+            // Navigation
+            document.getElementById('back-btn').addEventListener('click', () => {
+                if (gameState.currentHole > 1) {
+                    gameState.currentHole--;
+                    updateGameScreen();
+                }
+            });
+
+            document.getElementById('next-hole-btn').addEventListener('click', () => {
+                if (validateCurrentHole()) {
+                    if (gameState.currentHole < gameState.totalHoles) {
+                        gameState.currentHole++;
+                        updateGameScreen();
+                    } else {
+                        showResults();
+                    }
+                }
+            });
+        }
+
+        function updateGameScreen() {
+            const hole = gameState.currentHole;
+            const holeData = gameState.holes[hole - 1];
+
+            // Titre du trou
+            document.getElementById('hole-title').textContent = `Trou ${hole}`;
+
+            // Mise à jour du par
+            document.querySelectorAll('[data-par]').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-par="${holeData.par}"]`).classList.add('active');
+            document.getElementById('par-info').textContent = `Par ${holeData.par} sélectionné`;
+
+            // Mise à jour des scores globaux
+            updateScoreHeader();
+
+            // Mise à jour des contrôles de score
+            updateScoreInputs();
+
+            // Mise à jour du bouton suivant
+            const nextBtn = document.getElementById('next-hole-btn');
+            nextBtn.textContent = hole === gameState.totalHoles ? 'Terminer' : 'Trou suivant';
+        }
+
+        function updateScoreHeader() {
+            const headerDiv = document.getElementById('score-header');
+            headerDiv.innerHTML = '';
+
+            gameState.players.forEach(player => {
+                const totalScore = calculateTotalScore(player);
+                const totalPar = calculateTotalPar();
+                const relativeScore = totalScore - totalPar;
+
+                const scoreItem = document.createElement('div');
+                scoreItem.className = 'score-item';
+                scoreItem.innerHTML = `
+                    <div class="name">${player}</div>
+                    <div class="score">${relativeScore >= 0 ? '+' : ''}${relativeScore}</div>
+                `;
+                headerDiv.appendChild(scoreItem);
+            });
+        }
+
+        function updateScoreInputs() {
+            const inputsDiv = document.getElementById('score-inputs');
+            inputsDiv.innerHTML = '';
+
+            gameState.players.forEach(player => {
+                const currentScore = gameState.scores[player][gameState.currentHole - 1] || 4;
+                const par = gameState.holes[gameState.currentHole - 1].par;
+
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player-score';
+                playerDiv.innerHTML = `
+                    <div class="player-name">${player}</div>
+                    <div class="score-control">
+                        <button class="score-btn" onclick="changeScore('${player}', -1)">-</button>
+                        <div class="score-display" id="score-${player}">${currentScore}</div>
+                        <button class="score-btn" onclick="changeScore('${player}', 1)">+</button>
+                        <div class="result-emoji" id="emoji-${player}">${getScoreEmoji(currentScore, par)}</div>
+                    </div>
+                `;
+                inputsDiv.appendChild(playerDiv);
+
+                // Sauvegarder le score initial
+                gameState.scores[player][gameState.currentHole - 1] = currentScore;
+            });
+        }
+
+        function changeScore(player, delta) {
+            const currentScore = gameState.scores[player][gameState.currentHole - 1] || 4;
+            const newScore = Math.max(1, currentScore + delta);
+            
+            gameState.scores[player][gameState.currentHole - 1] = newScore;
+            
+            const scoreDisplay = document.getElementById(`score-${player}`);
+            const emojiDisplay = document.getElementById(`emoji-${player}`);
+            const par = gameState.holes[gameState.currentHole - 1].par;
+            
+            scoreDisplay.textContent = newScore;
+            emojiDisplay.textContent = getScoreEmoji(newScore, par);
+            
+            updateScoreHeader();
+        }
+
+        function getScoreEmoji(score, par) {
+            const diff = score - par;
+            if (diff <= -2) return '🦅'; // Eagle ou mieux
+            if (diff === -1) return '🕊️'; // Birdie
+            if (diff === 0) return '✅'; // Par
+            if (diff === 1) return '⚠️'; // Bogey
+            return '❗'; // Double bogey ou pire
+        }
+
+        function validateCurrentHole() {
+            // Vérifier que tous les joueurs ont un score
+            for (let player of gameState.players) {
+                if (!gameState.scores[player][gameState.currentHole - 1]) {
+                    alert('Veuillez saisir les scores de tous les joueurs');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function calculateTotalScore(player) {
+            return gameState.scores[player].slice(0, gameState.currentHole - 1).reduce((sum, score) => sum + (score || 0), 0);
+        }
+
+        function calculateTotalPar() {
+            return gameState.holes.slice(0, gameState.currentHole - 1).reduce((sum, hole) => sum + hole.par, 0);
+        }
+
+        function setupResultsScreen() {
+            document.getElementById('new-game-btn').addEventListener('click', () => {
+                // Reset du jeu
+                gameState = {
+                    golfName: '',
+                    players: ['Arthur'],
+                    totalHoles: 9,
+                    currentHole: 1,
+                    holes: [],
+                    scores: {}
+                };
+                
+                // Reset des formulaires
+                document.getElementById('golf-name').value = '';
+                document.querySelectorAll('.btn-secondary').forEach(btn => btn.classList.remove('active'));
+                document.getElementById('player-names').style.display = 'none';
+                
+                showScreen('config');
+            });
+        }
+
+        function showResults() {
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: '2-digit' 
+            });
+            
+            document.getElementById('results-title').textContent = `📅 Partie du ${dateStr} au Golf ${gameState.golfName}`;
+            
+            // Créer le tableau final
+            const table = document.getElementById('final-table');
+            table.innerHTML = '';
+            
+            // En-tête
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = '<th>Joueur</th>';
+            for (let i = 1; i <= gameState.totalHoles; i++) {
+                headerRow.innerHTML += `<th>T${i}</th>`;
+            }
+            headerRow.innerHTML += '<th>Total</th>';
+            table.appendChild(headerRow);
+            
+            // Lignes des joueurs
+            const finalScores = [];
+            gameState.players.forEach(player => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><strong>${player}</strong></td>`;
+                
+                let totalScore = 0;
+                for (let i = 0; i < gameState.totalHoles; i++) {
+                    const score = gameState.scores[player][i];
+                    totalScore += score;
+                    row.innerHTML += `<td>${score}</td>`;
+                }
+                
+                const totalPar = gameState.holes.reduce((sum, hole) => sum + hole.par, 0);
+                const relativeScore = totalScore - totalPar;
+                row.innerHTML += `<td><strong>${relativeScore >= 0 ? '+' : ''}${relativeScore}</strong></td>`;
+                
+                table.appendChild(row);
+                
+                // Ligne par
+                const parRow = document.createElement('tr');
+                parRow.innerHTML = '<td style="font-size: 12px; opacity: 0.7;">Par</td>';
+                for (let i = 0; i < gameState.totalHoles; i++) {
+                    parRow.innerHTML += `<td style="font-size: 12px; opacity: 0.7;">${gameState.holes[i].par}</td>`;
+                }
+                parRow.innerHTML += `<td style="font-size: 12px; opacity: 0.7;">${totalPar}</td>`;
+                table.appendChild(parRow);
+                
+                finalScores.push({ player, relativeScore });
+            });
+            
+            // Déterminer le gagnant
+            const winnerText = document.getElementById('winner-text');
+            finalScores.sort((a, b) => a.relativeScore - b.relativeScore);
+            
+            const lowestScore = finalScores[0].relativeScore;
+            const winners = finalScores.filter(s => s.relativeScore === lowestScore);
+            
+            if (winners.length > 1) {
+                winnerText.textContent = `Égalité entre ${winners.map(w => w.player).join(' et ')} !`;
+            } else {
+                winnerText.textContent = `🏆 Gagnant : ${winners[0].player} !`;
+            }
+            
+            showScreen('results');
+        }
+
+        function showScreen(screenName) {
+            Object.values(screens).forEach(screen => screen.classList.remove('active'));
+            screens[screenName].classList.add('active');
+        }
+    </script>
+</body>
+</html>
