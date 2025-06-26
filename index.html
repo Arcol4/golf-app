@@ -237,6 +237,8 @@
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
         }
 
         .final-results h2 {
@@ -697,49 +699,48 @@
             
             document.getElementById('results-title').textContent = `📅 Partie du ${dateStr} au Golf ${gameState.golfName}`;
             
-            // Créer le tableau final
+            // Créer le tableau final en format colonne
             const table = document.getElementById('final-table');
             table.innerHTML = '';
             
-            // En-tête
+            // En-tête avec les noms des joueurs
             const headerRow = document.createElement('tr');
-            headerRow.innerHTML = '<th>Joueur</th>';
-            for (let i = 1; i <= gameState.totalHoles; i++) {
-                headerRow.innerHTML += `<th>T${i}</th>`;
-            }
-            headerRow.innerHTML += '<th>Total</th>';
+            headerRow.innerHTML = '<th>Trou</th><th>Par</th>';
+            gameState.players.forEach(player => {
+                headerRow.innerHTML += `<th>${player}</th>`;
+            });
             table.appendChild(headerRow);
             
-            // Lignes des joueurs
-            const finalScores = [];
-            gameState.players.forEach(player => {
+            // Une ligne par trou
+            for (let i = 0; i < gameState.totalHoles; i++) {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td><strong>${player}</strong></td>`;
+                row.innerHTML = `<td><strong>T${i + 1}</strong></td><td>${gameState.holes[i].par}</td>`;
                 
-                let totalScore = 0;
-                for (let i = 0; i < gameState.totalHoles; i++) {
+                gameState.players.forEach(player => {
                     const score = gameState.scores[player][i];
-                    totalScore += score;
                     row.innerHTML += `<td>${score}</td>`;
-                }
-                
-                const totalPar = gameState.holes.reduce((sum, hole) => sum + hole.par, 0);
-                const relativeScore = totalScore - totalPar;
-                row.innerHTML += `<td><strong>${relativeScore >= 0 ? '+' : ''}${relativeScore}</strong></td>`;
+                });
                 
                 table.appendChild(row);
-                
-                // Ligne par
-                const parRow = document.createElement('tr');
-                parRow.innerHTML = '<td style="font-size: 12px; opacity: 0.7;">Par</td>';
-                for (let i = 0; i < gameState.totalHoles; i++) {
-                    parRow.innerHTML += `<td style="font-size: 12px; opacity: 0.7;">${gameState.holes[i].par}</td>`;
-                }
-                parRow.innerHTML += `<td style="font-size: 12px; opacity: 0.7;">${totalPar}</td>`;
-                table.appendChild(parRow);
-                
+            }
+            
+            // Ligne de total
+            const totalRow = document.createElement('tr');
+            totalRow.style.borderTop = '2px solid rgba(255, 255, 255, 0.5)';
+            totalRow.style.fontWeight = 'bold';
+            
+            const totalPar = gameState.holes.reduce((sum, hole) => sum + hole.par, 0);
+            totalRow.innerHTML = `<td><strong>Total</strong></td><td><strong>${totalPar}</strong></td>`;
+            
+            const finalScores = [];
+            gameState.players.forEach(player => {
+                const totalScore = gameState.scores[player].reduce((sum, score) => sum + score, 0);
+                const relativeScore = totalScore - totalPar;
+                totalRow.innerHTML += `<td><strong>${totalScore}<br><small>(${relativeScore >= 0 ? '+' : ''}${relativeScore})</small></strong></td>`;
                 finalScores.push({ player, relativeScore });
             });
+            
+            table.appendChild(totalRow);
             
             // Déterminer le gagnant
             const winnerText = document.getElementById('winner-text');
