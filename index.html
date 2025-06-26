@@ -112,16 +112,33 @@
         }
 
         .btn-secondary {
-            background-color: #f3f4f6;
+            background-color: #ffffff;
             color: #374151;
             border: 2px solid #e5e7eb;
         }
 
         .btn-secondary:hover {
-            background-color: #e5e7eb;
+            background-color: #f9fafb;
         }
 
         .btn-secondary.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Boutons spécifiques pour l'écran de jeu */
+        .game-screen .btn-secondary {
+            background-color: #3b82f6;
+            color: white;
+            border: 2px solid #3b82f6;
+        }
+
+        .game-screen .btn-secondary:hover {
+            background-color: #2563eb;
+        }
+
+        .game-screen .btn-secondary.active {
             background-color: #065f46;
             color: white;
             border-color: #065f46;
@@ -212,11 +229,15 @@
             height: 40px;
             border: none;
             border-radius: 8px;
-            background-color: #e5e7eb;
-            color: #374151;
+            background-color: #3b82f6;
+            color: white;
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
+        }
+
+        .score-btn:hover {
+            background-color: #2563eb;
         }
 
         .score-display {
@@ -359,7 +380,7 @@
         </div>
 
         <!-- Interface 2: Carte des scores -->
-        <div class="screen" id="game-screen">
+        <div class="screen game-screen" id="game-screen">
             <div class="header">
                 <h1>⛳ Carte des scores</h1>
             </div>
@@ -533,6 +554,15 @@
                     const par = parseInt(this.dataset.par);
                     gameState.holes[gameState.currentHole - 1].par = par;
                     document.getElementById('par-info').textContent = `Par ${par} sélectionné`;
+                    
+                    // Réinitialiser les scores avec le par comme base
+                    gameState.players.forEach(player => {
+                        gameState.scores[player][gameState.currentHole - 1] = par;
+                    });
+                    
+                    // Mettre à jour l'affichage des scores
+                    updateScoreInputs();
+                    updateScoreHeader();
                 });
             });
 
@@ -603,8 +633,8 @@
             inputsDiv.innerHTML = '';
 
             gameState.players.forEach(player => {
-                const currentScore = gameState.scores[player][gameState.currentHole - 1] || 4;
                 const par = gameState.holes[gameState.currentHole - 1].par;
+                const currentScore = gameState.scores[player][gameState.currentHole - 1] || par;
 
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'player-score';
@@ -619,7 +649,7 @@
                 `;
                 inputsDiv.appendChild(playerDiv);
 
-                // Sauvegarder le score initial
+                // Sauvegarder le score
                 gameState.scores[player][gameState.currentHole - 1] = currentScore;
             });
         }
@@ -718,7 +748,10 @@
                 
                 gameState.players.forEach(player => {
                     const score = gameState.scores[player][i];
-                    row.innerHTML += `<td>${score}</td>`;
+                    const par = gameState.holes[i].par;
+                    const diff = score - par;
+                    const diffText = diff === 0 ? 'Par' : (diff > 0 ? `+${diff}` : `${diff}`);
+                    row.innerHTML += `<td>${score}<br><small style="opacity: 0.8;">${diffText}</small></td>`;
                 });
                 
                 table.appendChild(row);
